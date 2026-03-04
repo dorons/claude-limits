@@ -1,0 +1,11 @@
+# Compiled binary
+claude-limits
+
+# Go build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Local Claude config
+.claude/
