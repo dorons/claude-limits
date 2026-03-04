@@ -99,6 +99,81 @@ func TestToPercent(t *testing.T) {
 	}
 }
 
+func TestBuildJSONOutput(t *testing.T) {
+	now := time.Date(2026, 3, 4, 12, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name  string
+		usage UsageResponse
+		want  JSONOutput
+	}{
+		{
+			name: "both buckets",
+			usage: UsageResponse{
+				FiveHour: &UsageBucket{Utilization: 0.40, ResetsAt: "2026-03-04T14:13:00Z"},
+				SevenDay: &UsageBucket{Utilization: 72, ResetsAt: "2026-03-07T17:00:00Z"},
+			},
+			want: JSONOutput{
+				Session: &JSONBucket{Percent: 40, ResetsAt: "2026-03-04T14:13:00Z", ResetsInSeconds: 7980},
+				Weekly:  &JSONBucket{Percent: 72, ResetsAt: "2026-03-07T17:00:00Z", ResetsInSeconds: 277200},
+			},
+		},
+		{
+			name: "session only",
+			usage: UsageResponse{
+				FiveHour: &UsageBucket{Utilization: 0.50, ResetsAt: "2026-03-04T14:00:00Z"},
+			},
+			want: JSONOutput{
+				Session: &JSONBucket{Percent: 50, ResetsAt: "2026-03-04T14:00:00Z", ResetsInSeconds: 7200},
+			},
+		},
+		{
+			name: "weekly only",
+			usage: UsageResponse{
+				SevenDay: &UsageBucket{Utilization: 10, ResetsAt: "2026-03-05T12:00:00Z"},
+			},
+			want: JSONOutput{
+				Weekly: &JSONBucket{Percent: 10, ResetsAt: "2026-03-05T12:00:00Z", ResetsInSeconds: 86400},
+			},
+		},
+		{
+			name:  "neither bucket",
+			usage: UsageResponse{},
+			want:  JSONOutput{},
+		},
+		{
+			name: "past reset time gives zero seconds",
+			usage: UsageResponse{
+				FiveHour: &UsageBucket{Utilization: 0.80, ResetsAt: "2026-03-04T11:00:00Z"},
+			},
+			want: JSONOutput{
+				Session: &JSONBucket{Percent: 80, ResetsAt: "2026-03-04T11:00:00Z", ResetsInSeconds: 0},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := buildJSONOutput(tt.usage, now)
+			if (got.Session == nil) != (tt.want.Session == nil) {
+				t.Fatalf("Session nil mismatch: got %v, want %v", got.Session, tt.want.Session)
+			}
+			if got.Session != nil {
+				if *got.Session != *tt.want.Session {
+					t.Errorf("Session = %+v, want %+v", *got.Session, *tt.want.Session)
+				}
+			}
+			if (got.Weekly == nil) != (tt.want.Weekly == nil) {
+				t.Fatalf("Weekly nil mismatch: got %v, want %v", got.Weekly, tt.want.Weekly)
+			}
+			if got.Weekly != nil {
+				if *got.Weekly != *tt.want.Weekly {
+					t.Errorf("Weekly = %+v, want %+v", *got.Weekly, *tt.want.Weekly)
+				}
+			}
+		})
+	}
+}
+
 func TestExtractToken(t *testing.T) {
 	tests := []struct {
 		name    string

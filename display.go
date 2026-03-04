@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 )
@@ -57,6 +59,56 @@ func formatResetTime(resetsAt string, now time.Time) string {
 		return "now"
 	}
 	return formatDuration(d)
+}
+
+// JSONBucket represents a single usage bucket in JSON output.
+type JSONBucket struct {
+	Percent        float64 `json:"percent"`
+	ResetsAt       string  `json:"resets_at"`
+	ResetsInSeconds int    `json:"resets_in_seconds"`
+}
+
+// JSONOutput is the top-level JSON output structure.
+type JSONOutput struct {
+	Session *JSONBucket `json:"session,omitempty"`
+	Weekly  *JSONBucket `json:"weekly,omitempty"`
+}
+
+func buildJSONBucket(bucket *UsageBucket, now time.Time) *JSONBucket {
+	if bucket == nil {
+		return nil
+	}
+	pct := toPercent(bucket.Utilization)
+	var seconds int
+	t, err := time.Parse(time.RFC3339, bucket.ResetsAt)
+	if err == nil {
+		d := t.Sub(now)
+		if d > 0 {
+			seconds = int(d.Seconds())
+		}
+	}
+	return &JSONBucket{
+		Percent:         pct,
+		ResetsAt:        bucket.ResetsAt,
+		ResetsInSeconds: seconds,
+	}
+}
+
+func buildJSONOutput(usage UsageResponse, now time.Time) JSONOutput {
+	return JSONOutput{
+		Session: buildJSONBucket(usage.FiveHour, now),
+		Weekly:  buildJSONBucket(usage.SevenDay, now),
+	}
+}
+
+func printUsageJSON(usage UsageResponse) {
+	output := buildJSONOutput(usage, time.Now())
+	data, err := json.MarshalIndent(output, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error marshaling JSON: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println(string(data))
 }
 
 func printUsage(usage UsageResponse) {
