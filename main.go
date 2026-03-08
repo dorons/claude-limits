@@ -16,7 +16,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	usage, err := fetchUsage(token)
+	usage, err := fetchUsageCached(token)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching usage: %v\n", err)
 		os.Exit(1)
