@@ -65,6 +65,22 @@ claude-limits --json
 
 Keys are omitted when the API returns no data for that bucket.
 
+## API response cache
+
+To avoid hitting the API on every invocation, responses are cached locally in `~/.claude/.usage-cache.json` (or `$CLAUDE_CONFIG_DIR/.usage-cache.json`). The default TTL is **3 minutes**.
+
+Override the TTL with the `CLAUDE_LIMITS_CACHE_TTL` environment variable (in seconds):
+
+```sh
+# Use a 60-second cache
+CLAUDE_LIMITS_CACHE_TTL=60 claude-limits
+
+# Disable caching entirely
+CLAUDE_LIMITS_CACHE_TTL=0 claude-limits
+```
+
+Cache writes are atomic and best-effort — a failure to write the cache never prevents the tool from returning results.
+
 ## Running tests
 
 ```sh
