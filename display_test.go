@@ -252,6 +252,54 @@ func TestStatuslineColor(t *testing.T) {
 	}
 }
 
+func TestFormatDurationHours(t *testing.T) {
+	tests := []struct {
+		name string
+		d    time.Duration
+		want string
+	}{
+		{"zero", 0, "0h"},
+		{"minutes only", 45 * time.Minute, "0h"},
+		{"hours and minutes", 2*time.Hour + 13*time.Minute, "2h"},
+		{"days and hours", 3*24*time.Hour + 5*time.Hour + 30*time.Minute, "3d 5h"},
+		{"exact hours", 3 * time.Hour, "3h"},
+		{"exact days", 2 * 24 * time.Hour, "2d 0h"},
+		{"negative", -10 * time.Minute, "now"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatDurationHours(tt.d)
+			if got != tt.want {
+				t.Errorf("formatDurationHours(%v) = %q, want %q", tt.d, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFormatDurationCompactHours(t *testing.T) {
+	tests := []struct {
+		name string
+		d    time.Duration
+		want string
+	}{
+		{"zero", 0, "0h"},
+		{"minutes only", 45 * time.Minute, "0h"},
+		{"hours and minutes", 2*time.Hour + 13*time.Minute, "2h"},
+		{"days and hours", 3*24*time.Hour + 5*time.Hour + 30*time.Minute, "3d5h"},
+		{"exact hours", 3 * time.Hour, "3h"},
+		{"exact days", 2 * 24 * time.Hour, "2d0h"},
+		{"negative", -10 * time.Minute, "now"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatDurationCompactHours(tt.d)
+			if got != tt.want {
+				t.Errorf("formatDurationCompactHours(%v) = %q, want %q", tt.d, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestFormatDurationCompact(t *testing.T) {
 	tests := []struct {
 		name string
@@ -283,54 +331,55 @@ func TestFormatStatuslineBucket(t *testing.T) {
 		label     string
 		bucket    *UsageBucket
 		showReset bool
+		hourOnly  bool
 		want      string
 	}{
 		{
-			"cyan low with reset",
+			"5h: cyan low with reset (minute granularity)",
 			"5h",
 			&UsageBucket{Utilization: 0.40, ResetsAt: "2026-03-04T14:13:00Z"},
-			true,
+			true, false,
 			colorCyan + "5h:40% (2h13m)" + colorReset,
 		},
 		{
-			"yellow mid with reset",
+			"7d: yellow mid with reset (hour granularity)",
 			"7d",
 			&UsageBucket{Utilization: 72, ResetsAt: "2026-03-07T17:00:00Z"},
-			true,
-			colorYellow + "7d:72% (3d5h0m)" + colorReset,
+			true, true,
+			colorYellow + "7d:72% (3d5h)" + colorReset,
 		},
 		{
 			"magenta high with reset",
 			"5h",
 			&UsageBucket{Utilization: 80, ResetsAt: "2026-03-04T14:13:00Z"},
-			true,
+			true, false,
 			colorMagenta + "5h:80% (2h13m)" + colorReset,
 		},
 		{
 			"invalid reset time",
 			"5h",
 			&UsageBucket{Utilization: 40, ResetsAt: "not-a-date"},
-			true,
+			true, false,
 			colorCyan + "5h:40% (unknown)" + colorReset,
 		},
 		{
 			"no reset shown for sub-bucket",
 			"Op",
 			&UsageBucket{Utilization: 3, ResetsAt: "2026-03-07T17:00:00Z"},
-			false,
+			false, false,
 			colorCyan + "Op:3%" + colorReset,
 		},
 		{
 			"no reset shown for sub-bucket high pct",
 			"Sn",
 			&UsageBucket{Utilization: 85, ResetsAt: "2026-03-07T17:00:00Z"},
-			false,
+			false, false,
 			colorMagenta + "Sn:85%" + colorReset,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := formatStatuslineBucket(tt.label, tt.bucket, now, tt.showReset)
+			got := formatStatuslineBucket(tt.label, tt.bucket, now, tt.showReset, tt.hourOnly)
 			if got != tt.want {
 				t.Errorf("formatStatuslineBucket() = %q, want %q", got, tt.want)
 			}
@@ -340,7 +389,7 @@ func TestFormatStatuslineBucket(t *testing.T) {
 
 func TestBuildStatusline(t *testing.T) {
 	now := time.Date(2026, 3, 4, 12, 0, 0, 0, time.UTC)
-	// resetsAt5h → 2h13m from now; resetsAt7d → 3d5h0m from now
+	// resetsAt5h → 2h13m from now; resetsAt7d → 3d5h from now
 	const resetsAt5h = "2026-03-04T14:13:00Z"
 	const resetsAt7d = "2026-03-07T17:00:00Z"
 
@@ -355,7 +404,7 @@ func TestBuildStatusline(t *testing.T) {
 				FiveHour: &UsageBucket{Utilization: 0.40, ResetsAt: resetsAt5h},
 				SevenDay: &UsageBucket{Utilization: 72, ResetsAt: resetsAt7d},
 			},
-			want: colorCyan + "5h:40% (2h13m)" + colorReset + " " + colorYellow + "7d:72% (3d5h0m)" + colorReset,
+			want: colorCyan + "5h:40% (2h13m)" + colorReset + " " + colorYellow + "7d:72% (3d5h)" + colorReset,
 		},
 		{
 			name: "max plan with extra usage",
@@ -370,7 +419,7 @@ func TestBuildStatusline(t *testing.T) {
 				},
 			},
 			want: colorCyan + "5h:13% (2h13m)" + colorReset + " " +
-				colorCyan + "7d:2% (3d5h0m)" + colorReset + " " +
+				colorCyan + "7d:2% (3d5h)" + colorReset + " " +
 				colorCyan + "Sn:5%" + colorReset + " " +
 				colorGreen + "Ex:$3.74/$20" + colorReset,
 		},
@@ -402,7 +451,7 @@ func TestBuildStatusline(t *testing.T) {
 				SevenDayCowork: &UsageBucket{Utilization: 10, ResetsAt: resetsAt7d},
 			},
 			want: colorCyan + "5h:40% (2h13m)" + colorReset + " " +
-				colorYellow + "7d:72% (3d5h0m)" + colorReset + " " +
+				colorYellow + "7d:72% (3d5h)" + colorReset + " " +
 				colorCyan + "Op:3%" + colorReset + " " +
 				colorCyan + "Sn:5%" + colorReset + " " +
 				colorCyan + "OA:2%" + colorReset + " " +
