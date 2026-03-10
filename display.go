@@ -38,6 +38,25 @@ func renderBar(pct float64) string {
 	return strings.Repeat("█", filled) + strings.Repeat("░", barWidth-filled)
 }
 
+func formatDurationCompact(d time.Duration) string {
+	if d < 0 {
+		return "now"
+	}
+	days := int(d.Hours()) / 24
+	hours := int(d.Hours()) % 24
+	minutes := int(d.Minutes()) % 60
+
+	var parts []string
+	if days > 0 {
+		parts = append(parts, fmt.Sprintf("%dd", days))
+	}
+	if days > 0 || hours > 0 {
+		parts = append(parts, fmt.Sprintf("%dh", hours))
+	}
+	parts = append(parts, fmt.Sprintf("%dm", minutes))
+	return strings.Join(parts, "")
+}
+
 func formatDuration(d time.Duration) string {
 	if d < 0 {
 		return "now"
@@ -166,30 +185,41 @@ func statuslineColor(pct float64) string {
 	}
 }
 
-func formatStatuslineBucket(label string, bucket *UsageBucket) string {
+func formatStatuslineBucket(label string, bucket *UsageBucket, now time.Time, showReset bool) string {
 	pct := toPercent(bucket.Utilization)
 	color := statuslineColor(pct)
+	if showReset {
+		t, err := time.Parse(time.RFC3339, bucket.ResetsAt)
+		var reset string
+		if err != nil {
+			reset = "unknown"
+		} else {
+			reset = formatDurationCompact(t.Sub(now))
+		}
+		return fmt.Sprintf("%s%s:%.0f%% (%s)%s", color, label, pct, reset, colorReset)
+	}
 	return fmt.Sprintf("%s%s:%.0f%%%s", color, label, pct, colorReset)
 }
 
-func buildStatusline(usage UsageResponse) string {
+func buildStatusline(usage UsageResponse, now time.Time) string {
 	var parts []string
 
 	buckets := []struct {
-		label  string
-		bucket *UsageBucket
+		label     string
+		bucket    *UsageBucket
+		showReset bool
 	}{
-		{"5h", usage.FiveHour},
-		{"7d", usage.SevenDay},
-		{"Op", usage.SevenDayOpus},
-		{"Sn", usage.SevenDaySonnet},
-		{"OA", usage.SevenDayOAuth},
-		{"CW", usage.SevenDayCowork},
+		{"5h", usage.FiveHour, true},
+		{"7d", usage.SevenDay, true},
+		{"Op", usage.SevenDayOpus, false},
+		{"Sn", usage.SevenDaySonnet, false},
+		{"OA", usage.SevenDayOAuth, false},
+		{"CW", usage.SevenDayCowork, false},
 	}
 
 	for _, b := range buckets {
 		if b.bucket != nil {
-			parts = append(parts, formatStatuslineBucket(b.label, b.bucket))
+			parts = append(parts, formatStatuslineBucket(b.label, b.bucket, now, b.showReset))
 		}
 	}
 
@@ -203,7 +233,7 @@ func buildStatusline(usage UsageResponse) string {
 }
 
 func printStatusline(usage UsageResponse) {
-	fmt.Println(buildStatusline(usage))
+	fmt.Println(buildStatusline(usage, time.Now()))
 }
 
 func printUsage(usage UsageResponse) {

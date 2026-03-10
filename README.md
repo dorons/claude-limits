@@ -58,7 +58,7 @@ claude-limits --statusline
 Example output (colors applied in terminal):
 
 ```
-5h:40% 7d:60% Op:100% Sn:20% OA:0% CW:0% Ex:$34.50/$100
+5h:40% (2h15m) 7d:60% (3d4h30m) Op:100% Sn:20% OA:0% CW:0% Ex:$34.50/$100
 ```
 
 **Bucket labels:**
