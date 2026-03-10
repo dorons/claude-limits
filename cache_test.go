@@ -2,8 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -127,6 +130,77 @@ func TestReadCache(t *testing.T) {
 		_, ok := readCache(path, time.Hour)
 		if ok {
 			t.Error("expected cache miss for corrupt file")
+		}
+	})
+}
+
+func TestFetchUsageCached(t *testing.T) {
+	t.Run("force bypasses valid cache", func(t *testing.T) {
+		var apiCalls atomic.Int32
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			apiCalls.Add(1)
+			w.Header().Set("Content-Type", "application/json")
+			resp := testUsageResponse()
+			data, _ := json.Marshal(resp)
+			w.Write(data)
+		}))
+		defer srv.Close()
+
+		origURL := usageURL
+		usageURL = srv.URL
+		defer func() { usageURL = origURL }()
+
+		dir := t.TempDir()
+		t.Setenv("CLAUDE_CONFIG_DIR", dir)
+
+		// Write a fresh, valid cache entry
+		path := filepath.Join(dir, cacheFileName)
+		cached := cachedUsage{
+			FetchedAt: time.Now(),
+			Usage:     testUsageResponse(),
+		}
+		data, _ := json.Marshal(cached)
+		os.WriteFile(path, data, 0600)
+
+		// force=true must bypass the cache and call the API
+		_, err := fetchUsageCached("test-token", true)
+		if err != nil {
+			t.Fatalf("fetchUsageCached() error: %v", err)
+		}
+		if n := apiCalls.Load(); n != 1 {
+			t.Errorf("API called %d times, want 1 (cache should have been bypassed)", n)
+		}
+	})
+
+	t.Run("no force uses valid cache", func(t *testing.T) {
+		var apiCalls atomic.Int32
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			apiCalls.Add(1)
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer srv.Close()
+
+		origURL := usageURL
+		usageURL = srv.URL
+		defer func() { usageURL = origURL }()
+
+		dir := t.TempDir()
+		t.Setenv("CLAUDE_CONFIG_DIR", dir)
+
+		path := filepath.Join(dir, cacheFileName)
+		cached := cachedUsage{
+			FetchedAt: time.Now(),
+			Usage:     testUsageResponse(),
+		}
+		data, _ := json.Marshal(cached)
+		os.WriteFile(path, data, 0600)
+
+		_, err := fetchUsageCached("test-token", false)
+		if err != nil {
+			t.Fatalf("fetchUsageCached() error: %v", err)
+		}
+		if n := apiCalls.Load(); n != 0 {
+			t.Errorf("API called %d times, want 0 (should have used cache)", n)
 		}
 	})
 }

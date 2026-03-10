@@ -91,11 +91,11 @@ func writeCache(path string, usage UsageResponse) error {
 	return nil
 }
 
-func fetchUsageCached(token string) (UsageResponse, error) {
+func fetchUsageCached(token string, force bool) (UsageResponse, error) {
 	path := cacheFilePath()
 	ttl := cacheTTL()
 
-	if path != "" {
+	if !force && path != "" {
 		if usage, ok := readCache(path, ttl); ok {
 			return usage, nil
 		}

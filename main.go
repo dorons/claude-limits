@@ -9,6 +9,7 @@ import (
 func main() {
 	jsonFlag       := flag.Bool("json", false, "output usage data as JSON")
 	statuslineFlag := flag.Bool("statusline", false, "output compact colorized usage for statusline")
+	forceFlag      := flag.Bool("force", false, "ignore cache and fetch fresh data from the API")
 	flag.Parse()
 
 	token, err := readCredentials()
@@ -17,7 +18,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	usage, err := fetchUsageCached(token)
+	usage, err := fetchUsageCached(token, *forceFlag)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching usage: %v\n", err)
 		os.Exit(1)

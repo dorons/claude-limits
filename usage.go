@@ -8,10 +8,9 @@ import (
 	"time"
 )
 
-const (
-	usageURL  = "https://api.anthropic.com/api/oauth/usage"
-	betaHeader = "oauth-2025-04-20"
-)
+var usageURL = "https://api.anthropic.com/api/oauth/usage"
+
+const betaHeader = "oauth-2025-04-20"
 
 type UsageBucket struct {
 	Utilization float64 `json:"utilization"`
