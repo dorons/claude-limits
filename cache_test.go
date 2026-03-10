@@ -34,7 +34,7 @@ func TestCacheTTL(t *testing.T) {
 	t.Run("default TTL", func(t *testing.T) {
 		t.Setenv("CLAUDE_LIMITS_CACHE_TTL", "")
 		got := cacheTTL()
-		want := 180 * time.Second
+		want := 300 * time.Second
 		if got != want {
 			t.Errorf("cacheTTL() = %v, want %v", got, want)
 		}
@@ -52,7 +52,7 @@ func TestCacheTTL(t *testing.T) {
 	t.Run("invalid TTL falls back to default", func(t *testing.T) {
 		t.Setenv("CLAUDE_LIMITS_CACHE_TTL", "not-a-number")
 		got := cacheTTL()
-		want := 180 * time.Second
+		want := 300 * time.Second
 		if got != want {
 			t.Errorf("cacheTTL() = %v, want %v", got, want)
 		}

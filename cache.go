@@ -10,7 +10,7 @@ import (
 
 const cacheFileName = ".usage-cache.json"
 
-var defaultCacheTTL = 180 * time.Second
+var defaultCacheTTL = 300 * time.Second
 
 type cachedUsage struct {
 	FetchedAt time.Time     `json:"fetched_at"`

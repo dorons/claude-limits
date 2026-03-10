@@ -67,7 +67,7 @@ Keys are omitted when the API returns no data for that bucket.
 
 ## API response cache
 
-To avoid hitting the API on every invocation, responses are cached locally in `~/.claude/.usage-cache.json` (or `$CLAUDE_CONFIG_DIR/.usage-cache.json`). The default TTL is **3 minutes**.
+To avoid hitting the API on every invocation, responses are cached locally in `~/.claude/.usage-cache.json` (or `$CLAUDE_CONFIG_DIR/.usage-cache.json`). The default TTL is **5 minutes**.
 
 Override the TTL with the `CLAUDE_LIMITS_CACHE_TTL` environment variable (in seconds):
 
