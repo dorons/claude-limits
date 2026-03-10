@@ -7,7 +7,8 @@ import (
 )
 
 func main() {
-	jsonFlag := flag.Bool("json", false, "output usage data as JSON")
+	jsonFlag       := flag.Bool("json", false, "output usage data as JSON")
+	statuslineFlag := flag.Bool("statusline", false, "output compact colorized usage for statusline")
 	flag.Parse()
 
 	token, err := readCredentials()
@@ -22,9 +23,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	if *jsonFlag {
+	switch {
+	case *jsonFlag:
 		printUsageJSON(usage)
-	} else {
+	case *statuslineFlag:
+		printStatusline(usage)
+	default:
 		printUsage(usage)
 	}
 }

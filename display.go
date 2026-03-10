@@ -10,6 +10,14 @@ import (
 
 const barWidth = 10
 
+const (
+	colorReset   = "\033[0m"
+	colorCyan    = "\033[36m"
+	colorYellow  = "\033[33m"
+	colorMagenta = "\033[35m"
+	colorGreen   = "\033[32m"
+)
+
 // toPercent normalises the API's utilization value to a 0–100 percentage.
 // The API may return either a fraction (0.32) or a whole number (32).
 func toPercent(v float64) float64 {
@@ -63,15 +71,28 @@ func formatResetTime(resetsAt string, now time.Time) string {
 
 // JSONBucket represents a single usage bucket in JSON output.
 type JSONBucket struct {
-	Percent        float64 `json:"percent"`
-	ResetsAt       string  `json:"resets_at"`
-	ResetsInSeconds int    `json:"resets_in_seconds"`
+	Percent         float64 `json:"percent"`
+	ResetsAt        string  `json:"resets_at"`
+	ResetsInSeconds int     `json:"resets_in_seconds"`
+}
+
+// JSONExtraUsage represents the extra usage (overage) bucket in JSON output.
+type JSONExtraUsage struct {
+	IsEnabled    bool    `json:"is_enabled"`
+	MonthlyLimit float64 `json:"monthly_limit"`
+	UsedCredits  float64 `json:"used_credits"`
+	Percent      float64 `json:"percent"`
 }
 
 // JSONOutput is the top-level JSON output structure.
 type JSONOutput struct {
-	Session *JSONBucket `json:"session,omitempty"`
-	Weekly  *JSONBucket `json:"weekly,omitempty"`
+	Session        *JSONBucket     `json:"session,omitempty"`
+	Weekly         *JSONBucket     `json:"weekly,omitempty"`
+	WeeklyOpus     *JSONBucket     `json:"weekly_opus,omitempty"`
+	WeeklySonnet   *JSONBucket     `json:"weekly_sonnet,omitempty"`
+	WeeklyOAuth    *JSONBucket     `json:"weekly_oauth_apps,omitempty"`
+	WeeklyCowork   *JSONBucket     `json:"weekly_cowork,omitempty"`
+	ExtraUsage     *JSONExtraUsage `json:"extra_usage,omitempty"`
 }
 
 func buildJSONBucket(bucket *UsageBucket, now time.Time) *JSONBucket {
@@ -94,10 +115,27 @@ func buildJSONBucket(bucket *UsageBucket, now time.Time) *JSONBucket {
 	}
 }
 
+func buildJSONExtraUsage(e *ExtraUsageBucket) *JSONExtraUsage {
+	if e == nil {
+		return nil
+	}
+	return &JSONExtraUsage{
+		IsEnabled:    e.IsEnabled,
+		MonthlyLimit: e.MonthlyLimit,
+		UsedCredits:  e.UsedCredits,
+		Percent:      toPercent(e.Utilization),
+	}
+}
+
 func buildJSONOutput(usage UsageResponse, now time.Time) JSONOutput {
 	return JSONOutput{
-		Session: buildJSONBucket(usage.FiveHour, now),
-		Weekly:  buildJSONBucket(usage.SevenDay, now),
+		Session:      buildJSONBucket(usage.FiveHour, now),
+		Weekly:       buildJSONBucket(usage.SevenDay, now),
+		WeeklyOpus:   buildJSONBucket(usage.SevenDayOpus, now),
+		WeeklySonnet: buildJSONBucket(usage.SevenDaySonnet, now),
+		WeeklyOAuth:  buildJSONBucket(usage.SevenDayOAuth, now),
+		WeeklyCowork: buildJSONBucket(usage.SevenDayCowork, now),
+		ExtraUsage:   buildJSONExtraUsage(usage.ExtraUsage),
 	}
 }
 
@@ -111,20 +149,100 @@ func printUsageJSON(usage UsageResponse) {
 	fmt.Println(string(data))
 }
 
+func printBucketRow(label string, bucket *UsageBucket, now time.Time) {
+	pct := toPercent(bucket.Utilization)
+	reset := formatResetTime(bucket.ResetsAt, now)
+	fmt.Printf("%-16s  %s  %3.0f%%  resets in %s\n", label, renderBar(pct), pct, reset)
+}
+
+func statuslineColor(pct float64) string {
+	switch {
+	case pct >= 80:
+		return colorMagenta
+	case pct >= 50:
+		return colorYellow
+	default:
+		return colorCyan
+	}
+}
+
+func formatStatuslineBucket(label string, bucket *UsageBucket) string {
+	pct := toPercent(bucket.Utilization)
+	color := statuslineColor(pct)
+	return fmt.Sprintf("%s%s:%.0f%%%s", color, label, pct, colorReset)
+}
+
+func buildStatusline(usage UsageResponse) string {
+	var parts []string
+
+	buckets := []struct {
+		label  string
+		bucket *UsageBucket
+	}{
+		{"5h", usage.FiveHour},
+		{"7d", usage.SevenDay},
+		{"Op", usage.SevenDayOpus},
+		{"Sn", usage.SevenDaySonnet},
+		{"OA", usage.SevenDayOAuth},
+		{"CW", usage.SevenDayCowork},
+	}
+
+	for _, b := range buckets {
+		if b.bucket != nil {
+			parts = append(parts, formatStatuslineBucket(b.label, b.bucket))
+		}
+	}
+
+	if usage.ExtraUsage != nil && usage.ExtraUsage.IsEnabled {
+		e := usage.ExtraUsage
+		parts = append(parts, fmt.Sprintf("%sEx:$%.2f/$%.0f%s",
+			colorGreen, e.UsedCredits/100, e.MonthlyLimit/100, colorReset))
+	}
+
+	return strings.Join(parts, " ")
+}
+
+func printStatusline(usage UsageResponse) {
+	fmt.Println(buildStatusline(usage))
+}
+
 func printUsage(usage UsageResponse) {
 	now := time.Now()
 	fmt.Println("Claude Usage")
 	fmt.Println("─────────────────────────────")
 
 	if usage.FiveHour != nil {
-		pct := toPercent(usage.FiveHour.Utilization)
-		reset := formatResetTime(usage.FiveHour.ResetsAt, now)
-		fmt.Printf("Session (5h)  %s  %3.0f%%  resets in %s\n", renderBar(pct), pct, reset)
+		printBucketRow("Session (5h)", usage.FiveHour, now)
 	}
 
 	if usage.SevenDay != nil {
-		pct := toPercent(usage.SevenDay.Utilization)
-		reset := formatResetTime(usage.SevenDay.ResetsAt, now)
-		fmt.Printf("Weekly  (7d)  %s  %3.0f%%  resets in %s\n", renderBar(pct), pct, reset)
+		printBucketRow("Weekly  (7d)", usage.SevenDay, now)
+	}
+
+	if usage.SevenDayOpus != nil {
+		printBucketRow("  Opus only", usage.SevenDayOpus, now)
+	}
+
+	if usage.SevenDaySonnet != nil {
+		printBucketRow("  Sonnet only", usage.SevenDaySonnet, now)
+	}
+
+	if usage.SevenDayOAuth != nil {
+		printBucketRow("  OAuth apps", usage.SevenDayOAuth, now)
+	}
+
+	if usage.SevenDayCowork != nil {
+		printBucketRow("  Cowork", usage.SevenDayCowork, now)
+	}
+
+	if usage.ExtraUsage != nil && usage.ExtraUsage.IsEnabled {
+		pct := toPercent(usage.ExtraUsage.Utilization)
+		fmt.Printf("%-16s  %s  %3.0f%%  $%.0f / $%.0f\n",
+			"Extra usage",
+			renderBar(pct),
+			pct,
+			usage.ExtraUsage.UsedCredits,
+			usage.ExtraUsage.MonthlyLimit,
+		)
 	}
 }

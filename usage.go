@@ -18,9 +18,21 @@ type UsageBucket struct {
 	ResetsAt    string  `json:"resets_at"`
 }
 
+type ExtraUsageBucket struct {
+	IsEnabled    bool    `json:"is_enabled"`
+	MonthlyLimit float64 `json:"monthly_limit"`
+	UsedCredits  float64 `json:"used_credits"`
+	Utilization  float64 `json:"utilization"`
+}
+
 type UsageResponse struct {
-	FiveHour *UsageBucket `json:"five_hour"`
-	SevenDay *UsageBucket `json:"seven_day"`
+	FiveHour        *UsageBucket      `json:"five_hour"`
+	SevenDay        *UsageBucket      `json:"seven_day"`
+	SevenDayOpus    *UsageBucket      `json:"seven_day_opus"`
+	SevenDaySonnet  *UsageBucket      `json:"seven_day_sonnet"`
+	SevenDayOAuth   *UsageBucket      `json:"seven_day_oauth_apps"`
+	SevenDayCowork  *UsageBucket      `json:"seven_day_cowork"`
+	ExtraUsage      *ExtraUsageBucket `json:"extra_usage"`
 }
 
 func fetchUsage(token string) (UsageResponse, error) {
