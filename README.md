@@ -21,13 +21,13 @@ Sub-buckets and extra usage are only shown when the API returns data for them.
 ## Installation
 
 ```sh
-go install github.com/doron/claude-limits@latest
+go install github.com/dorons/claude-limits@latest
 ```
 
 Or build from source:
 
 ```sh
-git clone https://github.com/doron/claude-limits.git
+git clone https://github.com/dorons/claude-limits.git
 cd claude-limits
 go build -o claude-limits .
 ```

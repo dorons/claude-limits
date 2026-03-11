@@ -1,3 +1,3 @@
-module github.com/doron/claude-limits
+module github.com/dorons/claude-limits
 
 go 1.25
