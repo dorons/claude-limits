@@ -235,8 +235,8 @@ func TestStatuslineColor(t *testing.T) {
 		pct  float64
 		want string
 	}{
-		{"0% cyan", 0, colorCyan},
-		{"49% cyan", 49, colorCyan},
+		{"0% green", 0, colorGreen},
+		{"49% green", 49, colorGreen},
 		{"50% yellow", 50, colorYellow},
 		{"79% yellow", 79, colorYellow},
 		{"80% magenta", 80, colorMagenta},
@@ -335,11 +335,11 @@ func TestFormatStatuslineBucket(t *testing.T) {
 		want      string
 	}{
 		{
-			"5h: cyan low with reset (minute granularity)",
+			"5h: green low with reset (minute granularity)",
 			"5h",
 			&UsageBucket{Utilization: 0.40, ResetsAt: "2026-03-04T14:13:00Z"},
 			true, false,
-			colorCyan + "5h:40% (2h13m)" + colorReset,
+			colorGreen + "5h:40% (2h13m)" + colorReset,
 		},
 		{
 			"7d: yellow mid with reset (hour granularity)",
@@ -360,14 +360,14 @@ func TestFormatStatuslineBucket(t *testing.T) {
 			"5h",
 			&UsageBucket{Utilization: 40, ResetsAt: "not-a-date"},
 			true, false,
-			colorCyan + "5h:40% (unknown)" + colorReset,
+			colorGreen + "5h:40% (unknown)" + colorReset,
 		},
 		{
 			"no reset shown for sub-bucket",
 			"Op",
 			&UsageBucket{Utilization: 3, ResetsAt: "2026-03-07T17:00:00Z"},
 			false, false,
-			colorCyan + "Op:3%" + colorReset,
+			colorGreen + "Op:3%" + colorReset,
 		},
 		{
 			"no reset shown for sub-bucket high pct",
@@ -404,7 +404,7 @@ func TestBuildStatusline(t *testing.T) {
 				FiveHour: &UsageBucket{Utilization: 0.40, ResetsAt: resetsAt5h},
 				SevenDay: &UsageBucket{Utilization: 72, ResetsAt: resetsAt7d},
 			},
-			want: colorCyan + "5h:40% (2h13m)" + colorReset + " " + colorYellow + "7d:72% (3d5h)" + colorReset,
+			want: colorGreen + "5h:40% (2h13m)" + colorReset + " " + colorYellow + "7d:72% (3d5h)" + colorReset,
 		},
 		{
 			name: "max plan with extra usage",
@@ -418,9 +418,9 @@ func TestBuildStatusline(t *testing.T) {
 					MonthlyLimit: 2000,
 				},
 			},
-			want: colorCyan + "5h:13% (2h13m)" + colorReset + " " +
-				colorCyan + "7d:2% (3d5h)" + colorReset + " " +
-				colorCyan + "Sn:5%" + colorReset + " " +
+			want: colorGreen + "5h:13% (2h13m)" + colorReset + " " +
+				colorGreen + "7d:2% (3d5h)" + colorReset + " " +
+				colorGreen + "Sn:5%" + colorReset + " " +
 				colorGreen + "Ex:$3.74/$20" + colorReset,
 		},
 		{
@@ -433,7 +433,7 @@ func TestBuildStatusline(t *testing.T) {
 					MonthlyLimit: 2000,
 				},
 			},
-			want: colorCyan + "5h:40% (2h13m)" + colorReset,
+			want: colorGreen + "5h:40% (2h13m)" + colorReset,
 		},
 		{
 			name:  "empty response: no crash, empty output",
@@ -450,12 +450,12 @@ func TestBuildStatusline(t *testing.T) {
 				SevenDayOAuth:  &UsageBucket{Utilization: 2, ResetsAt: resetsAt7d},
 				SevenDayCowork: &UsageBucket{Utilization: 10, ResetsAt: resetsAt7d},
 			},
-			want: colorCyan + "5h:40% (2h13m)" + colorReset + " " +
+			want: colorGreen + "5h:40% (2h13m)" + colorReset + " " +
 				colorYellow + "7d:72% (3d5h)" + colorReset + " " +
-				colorCyan + "Op:3%" + colorReset + " " +
-				colorCyan + "Sn:5%" + colorReset + " " +
-				colorCyan + "OA:2%" + colorReset + " " +
-				colorCyan + "CW:10%" + colorReset,
+				colorGreen + "Op:3%" + colorReset + " " +
+				colorGreen + "Sn:5%" + colorReset + " " +
+				colorGreen + "OA:2%" + colorReset + " " +
+				colorGreen + "CW:10%" + colorReset,
 		},
 		{
 			name: "magenta at 80%",

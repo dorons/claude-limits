@@ -228,7 +228,7 @@ func statuslineColor(pct float64) string {
 	case pct >= 50:
 		return colorYellow
 	default:
-		return colorCyan
+		return colorGreen
 	}
 }
 

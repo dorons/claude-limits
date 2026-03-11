@@ -77,10 +77,9 @@ Example output (colors applied in terminal):
 
 | Color   | Threshold |
 |---------|-----------|
-| Cyan    | < 50% |
+| Green   | < 50% |
 | Yellow  | 50–79% |
 | Magenta | 80%+ |
-| Green   | Extra usage (always) |
 
 Buckets are omitted when the API returns no data for them. Extra usage (`Ex:$used/$limit`) is only shown when extra usage is enabled on your account.
 
